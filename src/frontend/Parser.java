@@ -171,10 +171,23 @@ public class Parser {
         return tokens.next();
     }
 
+    // Variables associated with Lab 2 Renaming Algorithm
+    ArrayList<Integer> LU = new ArrayList<>();
+    ArrayList<Integer> SRToVR = new ArrayList<>();
+    int maxSR = 0;
+    int MAXLIVE = 0;
+    int VRName = 0;
+
     public void renameRegisters(ArrayList<IR.Node> ops) {
         // First: Find distinct live ranges in code
         // value is "live" from definition up to last use
-        ArrayList<>
+
+//        for (int i = 0; i < ops.size(); i++) {
+//
+//        }
+        for (int i = ops.size() - 1; i > MAXLIVE; i--) {
+//            if (ops.get(i).)
+        }
     }
     /**
      * -r flag

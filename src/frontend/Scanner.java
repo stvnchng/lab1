@@ -404,9 +404,6 @@ public class Scanner {
     public void reportErrors() {
         System.out.println("Line\tMessage\n-----------------------------");
         errors.forEach(System.err::println);
-    }
-
-    public void renameRegisters() {
-        
+        System.err.println("\neFrontend found " + errors.size() + " errors.");
     }
 }

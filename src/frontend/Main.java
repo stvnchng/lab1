@@ -51,6 +51,10 @@ public class Main {
             scanner.printTokens();
         }
         if (flagP) {
+            if (scanner.errorsPresent()) {
+                scanner.reportErrors();
+                return;
+            }
             parser.parse(scanner);
             parser.printSummary();
         }
