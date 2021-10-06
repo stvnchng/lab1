@@ -1,7 +1,7 @@
 package frontend;
 
-import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import frontend.Token.POS;
 import frontend.Token.Lexeme;
@@ -172,21 +172,54 @@ public class Parser {
     }
 
     // Variables associated with Lab 2 Renaming Algorithm
-    ArrayList<Integer> LU = new ArrayList<>();
-    ArrayList<Integer> SRToVR = new ArrayList<>();
-    int maxSR = 0;
+    int[] SRToVR;
+    int[] LU;
+
+    int maxSR;
     int MAXLIVE = 0;
     int VRName = 0;
 
-    public void renameRegisters(ArrayList<IR.Node> ops) {
+    public LinkedList<IR.Node> getIR() {
+        return this.irList.getOps();
+    }
+
+    public void renameRegisters(LinkedList<IR.Node> ops) {
         // First: Find distinct live ranges in code
         // value is "live" from definition up to last use
+        for (IR.Node op : ops) {
+            if (op.getMaxSR() > maxSR) maxSR = op.getMaxSR();
+        }
+        SRToVR = new int[maxSR];
+        LU = new int[maxSR];
+        for (int idx = 0; idx < maxSR; idx++) {
+            SRToVR[idx] = -1;
+            LU[idx] = Integer.MAX_VALUE;
+        }
+        for (int i = ops.size() - 1; i > -1; i--) {
+            // load
+            if (ops.get(i).opcode == 0) {
+                // update and kill
+                if (SRToVR[ops.get(i).op3[0]] == -1) {
+                    SRToVR[ops.get(i).op3[0]] = VRName;
+                    VRName++;
+                }
+                ops.get(i).op3[1] = SRToVR[ops.get(i).op3[0]];
+                ops.get(i).op3[3] = SRToVR[ops.get(i).op3[0]];
 
-//        for (int i = 0; i < ops.size(); i++) {
-//
-//        }
-        for (int i = ops.size() - 1; i > MAXLIVE; i--) {
-//            if (ops.get(i).)
+            }
+            // store
+            else if (ops.get(i).opcode == 1) {
+                // don't need to initialize for store
+
+            }
+            // loadI
+            else if (ops.get(i).opcode == 2) {
+
+            }
+            // arithop
+            else if (ops.get(i).op1.length > 0 && ops.get(i).op2.length > 0 && ops.get(i).op3.length > 0) {
+
+            }
         }
     }
     /**

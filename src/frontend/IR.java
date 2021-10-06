@@ -17,12 +17,16 @@ public class IR {
         nodes.forEach(System.out::println);
     }
 
+    public LinkedList<Node> getOps() {
+        return this.nodes;
+    }
+
     public static class Node {
 
-        private final int opcode;
-        private final int[] op1;
-        private final int[] op2;
-        private final int[] op3;
+        public final int opcode;
+        public final int[] op1;
+        public final int[] op2;
+        public final int[] op3;
         private boolean constant = false;
 
         private static final int SR = 0;
@@ -62,6 +66,15 @@ public class IR {
             this.op1 = new int[0];
             this.op2 = new int[0];
             this.op3 = new int[0];
+        }
+
+        public int getMaxSR() {
+            int maxSR = 0;
+            if (constant) return -1;
+            if (op1.length > 0 && op1[0] > maxSR) maxSR = op1[0];
+            if (op2.length > 0 && op2[0] > maxSR) maxSR = op2[0];
+            if (op3.length > 0 && op3[0] > maxSR) maxSR = op3[0];
+            return maxSR;
         }
 
         public String getOperandString(int[] operand, boolean constant) {
