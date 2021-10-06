@@ -2,12 +2,13 @@ package frontend;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws IOException {
         List<String> argList = Arrays.asList(args);
-        boolean flagS = false, flagP = false, flagR = false;
+        boolean flagS = false, flagP = false, flagR = false, flagX = false;
 
         // check that the input args has only one flag
         if (argList.stream().filter(arg -> arg.contains("-")).count() > 1) warning();
@@ -28,6 +29,10 @@ public class Main {
         // -s flag invokes scanner on input file
         else if (argList.contains("-s")) {
             flagS = true;
+        }
+        // -s flag invokes scanner on input file
+        else if (argList.contains("-x")) {
+            flagX = true;
         }
 
         String path;
@@ -69,6 +74,22 @@ public class Main {
                 return;
             }
             parser.printIR();
+        }
+        if (flagX) {
+            if (scanner.errorsPresent()) {
+                System.out.println("\nError reading input file, simulator not run.");
+                return;
+            }
+            parser.parse(scanner);
+            if (parser.errorsPresent()) {
+                try {
+                    Thread.sleep(10);
+                    System.err.println("\nError reading input file, simulator not run.");
+                } catch (Exception ignored) {}
+                return;
+            }
+            LinkedList<IR.Node> ops = parser.getIR();
+            parser.renameRegisters(ops);
         }
     }
 
