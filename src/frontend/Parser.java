@@ -267,11 +267,11 @@ public class Parser {
 
     public void updateRenamedOps(IR.Node op, int i) {
         String reg1 = "", reg2 = "", reg3 = "";
-        if (op.op1.length > 0 && op.op1[VR] != -1) reg1 = "r" + op.op1[VR];
-        else if (op.op1[SR] != -1) reg1 = String.valueOf(op.op1[SR]);
+        if (op.op1.length > 0 && op.op1[VR] != -1) reg1 = "  \t\tr" + op.op1[VR];
+        else if (op.op1[SR] != -1) reg1 = "  \t\t" + op.op1[SR];
         if (op.op2.length > 0 && op.op2[VR] != -1) reg2 = ", \tr" + op.op2[VR];
-        if (op.op3.length > 0 && op.op3[VR] != -1) reg3 = "r" + op.op3[VR];
-        String renamedOp = Token.Lexeme.valueOf(op.opcode) + "\t\t\t" + reg1 + reg2 + "\t=>\t" + reg3;
+        if (op.op3.length > 0 && op.op3[VR] != -1) reg3 = "\t=>\t r" + op.op3[VR];
+        String renamedOp = Token.Lexeme.valueOf(op.opcode) + reg1 + reg2 + reg3;
         renamedOps[i]  = renamedOp;
     }
 
