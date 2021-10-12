@@ -8,7 +8,8 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) throws IOException {
         List<String> argList = Arrays.asList(args);
-        boolean flagS = false, flagP = false, flagR = false, flagX = false;
+        boolean flagS = false, flagP = false, flagR = false, flagX = false, flagK = false;
+        int k = -1;
 
         // check that the input args has only one flag
         if (argList.stream().filter(arg -> arg.contains("-")).count() > 1) warning();
@@ -30,14 +31,29 @@ public class Main {
         else if (argList.contains("-s")) {
             flagS = true;
         }
-        // -s flag invokes scanner on input file
+        // -x flag invokes renamer on input file
         else if (argList.contains("-x")) {
             flagX = true;
+        }
+        // h flag invokes allocate
+        else {
+            try {
+                k = Integer.parseInt(argList.get(0));
+                if (k >= 3 && k <= 64) {
+                    flagK = true;
+                } else {
+                    warnK(k);
+                    return;
+                }
+            } catch (Exception e) {
+                System.err.println("Error: k flag invoked but value provided was not an integer. \nPlease try invoking ./412alloc with a value of k between 3 and 64 inclusive.");
+                return;
+            }
         }
 
         String path;
         // handle default behavior
-        if (argList.stream().noneMatch(arg -> arg.contains("-"))) {
+        if (argList.stream().noneMatch(arg -> arg.contains("-")) && !flagK) {
             flagP = true;
             path = args[0];
         } else {
@@ -48,6 +64,7 @@ public class Main {
 
         Scanner scanner = new Scanner(br);
         Parser parser = new Parser();
+        Allocator allocator = new Allocator();
 
         // go ahead and scan in all the goodies
         scanner.scanInput();
@@ -75,7 +92,7 @@ public class Main {
             }
             parser.printIR();
         }
-        if (flagX) {
+        if (flagX || flagK) {
             if (scanner.errorsPresent()) {
                 System.out.println("\nError reading input file, simulator not run.");
                 return;
@@ -89,7 +106,11 @@ public class Main {
                 return;
             }
             LinkedList<IR.Node> ops = parser.getIR();
-            parser.renameRegisters(ops);
+            if (flagK) {
+                System.out.println("Invoking allocator with k = " + k);
+                return;
+            }
+            allocator.renameRegisters(ops);
         }
     }
 
@@ -106,10 +127,16 @@ public class Main {
         System.out.println("\t\t-s\t\tprints tokens in token stream");
         System.out.println("\t\t-p\t\tinvokes parser and reports on success or failure");
         System.out.println("\t\t-r\t\tprints human readable version of parser's IR");
+        System.out.println("\t\t-x\t\tperforms register renaming and prints out resulting modified ILOC code");
+        System.out.println("\t\tk\t\tinvokes allocator with a k-limit on registers, where k is an integer between 3 and 64 inclusive.");
         System.out.println("If none is specified, the default action is '-p'.");
     }
 
     static void warning() {
         System.err.println("WARNING: The frontend only accepts one flag, and will use the highest priority flag. Priority is, from highest to lowest, -h, -r, -p, and -s.");
+    }
+
+    static void warnK(int k) {
+        System.err.println("WARNING: The value of k must be between 3 and 64 inclusive.");
     }
 }
