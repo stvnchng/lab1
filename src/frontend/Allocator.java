@@ -15,11 +15,12 @@ public class Allocator {
 
 
     // Stuff for Code Check 1 (Renaming algo)
+    public int MAXLIVE = 0;
+
     int[] SRToVR;
     int[] LU;
 
     int maxSR;
-    int MAXLIVE = 0;
     int VRName = 0;
 
     static final int SR = 0;
@@ -28,19 +29,20 @@ public class Allocator {
 
     public String[] renamedOps;
 
-    public void renameRegisters(LinkedList<IR.Node> ops) {
+    public IR.Node[] renameRegisters(LinkedList<IR.Node> ops, boolean flagX) {
+        renamedOps = new IR.Node[ops.size()];
+        formattedOps = new String[ops.size()];
+
         for (IR.Node op : ops) {
             if (op.getMaxSR() > maxSR) maxSR = op.getMaxSR();
         }
         maxSR++;
+
+        // initialize
         SRToVR = new int[maxSR];
         LU = new int[maxSR];
-        renamedOps = new String[ops.size()];
-        // initialize
-        for (int idx = 0; idx < maxSR; idx++) {
-            SRToVR[idx] = -1;
-            LU[idx] = Integer.MAX_VALUE;
-        }
+        Arrays.fill(SRToVR, -1);
+        Arrays.fill(LU, Integer.MAX_VALUE);
         for (int i = ops.size() - 1; i > -1; i--) {
             IR.Node currOp = ops.get(i);
             // LOAD, kill op3 then update op1, if ARITHOP also update op2
@@ -68,10 +70,9 @@ public class Allocator {
                 LU[currOp.op3[SR]] = Integer.MAX_VALUE;
                 updateMAXLIVE();
             }
-//            System.out.println(i + ": " + Arrays.toString(SRToVR));
-//            System.out.println(i + ": " + Arrays.toString(LU));
-//            System.out.println("VRName: " + VRName);
-            updateRenamedOps(currOp, i);
+            updateMAXLIVE();
+            renamedOps[i] = currOp;
+            formatOperation(currOp, i);
         }
         Arrays.stream(renamedOps).forEach(System.out::println);
 //        System.out.println("MAXLIVE: " + MAXLIVE);
@@ -88,7 +89,10 @@ public class Allocator {
         } else System.out.println("Empty operand!");
     }
 
-    public void updateMAXLIVE() {
+    private void updateMAXLIVE() {
+//        System.out.println(i + ": " + Arrays.toString(SRToVR));
+//        System.out.println(i + ": " + Arrays.toString(LU));
+//        System.out.println("VRName: " + VRName);
         long SRToVRCount = Arrays.stream(SRToVR).filter(reg -> reg != -1).count();
         if (SRToVRCount > MAXLIVE) MAXLIVE = (int) SRToVRCount;
     }
@@ -103,4 +107,49 @@ public class Allocator {
         renamedOps[i]  = renamedOp;
     }
 
+    // Stuff for Code Check 2 - allocator algo
+    int[] VRToPR;
+    int[] PRToVR;
+    int[] PRNU;
+
+    int maxVR;
+    int maxPR;
+
+    IR.Node[] allocatedOps;
+
+    // allocate without spilling - when MAXLIVE >= maxPR
+    public void allocate(IR.Node[] ops, int k) {
+        for (IR.Node op : ops) {
+            System.out.println(op);
+            if (op.getMaxRegister(VR) > maxVR) maxVR = op.getMaxRegister(VR);
+        }
+        maxVR++;
+        VRToPR = new int[maxVR];
+        PRToVR = new int[k];
+        Arrays.fill(VRToPR, -1);
+        System.out.println(Arrays.toString(VRToPR));
+        for (int i = 0; i < ops.length; i++) {
+            IR.Node currOp = ops[i];
+            // LOAD, op1 and op3 need a PR, ARITHOP op2 also needs a PR
+            if (currOp.opcode == 0 || (currOp.opcode >= 3 && currOp.opcode <= 7)) {
+
+            }
+            // STORE
+            else if (currOp.opcode == 1) {
+
+            }
+            // LOADI, op3 needs a PR
+            else if (currOp.opcode == 2) {
+                VRToPR[currOp.op3[VR]] = getAPR();
+            }
+        }
+    }
+
+    public int getAPR() {
+        return 0;
+    }
+
+    public void freePR() {
+
+    }
 }
