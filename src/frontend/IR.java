@@ -68,8 +68,24 @@ public class IR {
             this.op3 = new int[0];
         }
 
-        public int getMaxSR() {
-            int maxSR = 0;
+        public boolean isARITHOP() {
+            return this.opcode >= 3 && this.opcode <= 7;
+        }
+
+        public boolean usesOP1() {
+            return this.opcode == 0 || this.opcode == 1 || isARITHOP();
+        }
+
+        public boolean usesOP2() {
+            return isARITHOP();
+        }
+
+        public boolean usesOP3() {
+            return !(this.opcode == 8 || this.opcode == 9);
+        }
+
+        public int getMaxRegister(int type) {
+            int maxRegister = 0;
             if (constant) return -1;
             if (op1.length > 0 && op1[0] > maxSR) maxSR = op1[0];
             if (op2.length > 0 && op2[0] > maxSR) maxSR = op2[0];
@@ -98,7 +114,7 @@ public class IR {
                         cell.append(", nu").append(operand[VR]);
                         break;
                     default:
-                        System.err.println("Error occurred while building IR");
+                        System.err.println("Error occurred while building IR operand string...");
                         break;
                 }
             }

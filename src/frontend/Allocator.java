@@ -1,7 +1,6 @@
 package frontend;
 
-import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.*;
 
 public class Allocator {
 
@@ -27,10 +26,12 @@ public class Allocator {
     static final int VR = 1;
     static final int NU = 3;
 
-    public String[] renamedOps;
+    // pretty-printed ILOC code for flag output
+    private String[] formattedOps;
 
     public IR.Node[] renameRegisters(LinkedList<IR.Node> ops, boolean flagX) {
-        renamedOps = new IR.Node[ops.size()];
+        // list of ops after renaming in IR.Node form
+        IR.Node[] renamedOps = new IR.Node[ops.size()];
         formattedOps = new String[ops.size()];
 
         for (IR.Node op : ops) {
@@ -72,7 +73,7 @@ public class Allocator {
             }
             updateMAXLIVE();
             renamedOps[i] = currOp;
-            formatOperation(currOp, i);
+            formatOperation(currOp, i, VR);
         }
         Arrays.stream(renamedOps).forEach(System.out::println);
 //        System.out.println("MAXLIVE: " + MAXLIVE);
@@ -97,14 +98,13 @@ public class Allocator {
         if (SRToVRCount > MAXLIVE) MAXLIVE = (int) SRToVRCount;
     }
 
-    public void updateRenamedOps(IR.Node op, int i) {
+    private void formatOperation(IR.Node op, int i, int regType) {
         String reg1 = "", reg2 = "", reg3 = "";
-        if (op.op1.length > 0 && op.op1[VR] != -1) reg1 = "  \t\tr" + op.op1[VR];
+        if (op.op1.length > 0 && op.op1[regType] != -1) reg1 = "  \t\tr" + op.op1[regType];
         else if (op.op1[SR] != -1) reg1 = "  \t\t" + op.op1[SR];
-        if (op.op2.length > 0 && op.op2[VR] != -1) reg2 = ", \tr" + op.op2[VR];
-        if (op.op3.length > 0 && op.op3[VR] != -1) reg3 = "\t=>\t r" + op.op3[VR];
-        String renamedOp = Token.Lexeme.valueOf(op.opcode) + reg1 + reg2 + reg3;
-        renamedOps[i]  = renamedOp;
+        if (op.op2.length > 0 && op.op2[regType] != -1) reg2 = ", \tr" + op.op2[regType];
+        if (op.op3.length > 0 && op.op3[regType] != -1) reg3 = "\t=>\t r" + op.op3[regType];
+        formattedOps[i] = Token.Lexeme.valueOf(op.opcode) + reg1 + reg2 + reg3;
     }
 
     // Stuff for Code Check 2 - allocator algo
@@ -113,43 +113,150 @@ public class Allocator {
     int[] PRNU;
 
     int maxVR;
-    int maxPR;
-
+    // trying out some sort of stack to keep track of available registers
+    Deque<Integer> PRStack = new ArrayDeque<>();
     IR.Node[] allocatedOps;
 
-    // allocate without spilling - when MAXLIVE >= maxPR
     public void allocate(IR.Node[] ops, int k) {
+//        System.out.println("Invoking allocator with k = " + k + " and MAXLIVE = " + MAXLIVE);
+        allocatedOps = new IR.Node[ops.length];
         for (IR.Node op : ops) {
-            System.out.println(op);
             if (op.getMaxRegister(VR) > maxVR) maxVR = op.getMaxRegister(VR);
         }
-        maxVR++;
-        VRToPR = new int[maxVR];
+
+        for (int idx = k - 1; idx > -1; idx--) {
+            PRStack.push(idx);
+        }
+
+        VRToPR = new int[maxVR + 1];
         PRToVR = new int[k];
+        PRNU = new int[k];
         Arrays.fill(VRToPR, -1);
-        System.out.println(Arrays.toString(VRToPR));
+        Arrays.fill(PRToVR, -1);
+        Arrays.fill(PRNU, Integer.MAX_VALUE);
+
+        // traverse block linearly
         for (int i = 0; i < ops.length; i++) {
             IR.Node currOp = ops[i];
-            // LOAD, op1 and op3 need a PR, ARITHOP op2 also needs a PR
-            if (currOp.opcode == 0 || (currOp.opcode >= 3 && currOp.opcode <= 7)) {
-
+            // allocate uses, first for op1 then op2
+            if (currOp.usesOP1()) {
+                if (VRToPR[currOp.op1[VR]] == -1) {
+                    System.out.println("op1 gets a pr with inputs - vr: " + currOp.op1[VR] + " nu: " + currOp.op1[NU]);
+                    currOp.op1[PR] = getAPR(currOp.op1[VR],  currOp.op1[NU], false);
+                    restore(currOp.op1[VR], currOp.op1[PR]);
+                } else {
+                    currOp.op1[PR] = VRToPR[currOp.op1[VR]];
+                }
             }
-            // STORE
-            else if (currOp.opcode == 1) {
-
+            if (currOp.usesOP2()) {
+                if (VRToPR[currOp.op2[VR]] == -1) {
+                    System.out.println("op2 gets a pr with inputs - vr: " + currOp.op2[VR] + " nu: " + currOp.op2[NU]);
+                    currOp.op2[PR] = getAPR(currOp.op2[VR],  currOp.op2[NU], true);
+                    restore(currOp.op2[VR], currOp.op2[PR]);
+                } else {
+                    currOp.op2[PR] = VRToPR[currOp.op2[VR]];
+                }
             }
-            // LOADI, op3 needs a PR
-            else if (currOp.opcode == 2) {
-                VRToPR[currOp.op3[VR]] = getAPR();
+            // set the mark in ops
+            // last use?
+            boolean op1Freed = false;
+            boolean op2Freed = false;
+            if (currOp.usesOP1()) {
+                if (currOp.op1[NU] == Integer.MAX_VALUE && currOp.op1[PR] != -1) {
+                    System.out.println("op1 freed pr" + currOp.op1[PR]);
+                    freeAPR(currOp.op1[PR]);
+                    op1Freed = true;
+                }
+            }
+            if (currOp.usesOP2()) {
+                if (currOp.op2[NU] == Integer.MAX_VALUE && currOp.op2[PR] != -1) {
+                    System.out.println("op2 freed pr" + currOp.op2[PR]);
+                    freeAPR(currOp.op2[PR]);
+                    op2Freed = true;
+                }
+            }
+            if (op1Freed && op2Freed) {
+                PRStack.push(currOp.op2[PR]);
+                PRStack.push(currOp.op1[PR]);
+            } else if (op1Freed) {
+                PRStack.push(currOp.op1[PR]);
+            } else if (op2Freed) {
+                PRStack.push(currOp.op2[PR]);
+            }
+            System.out.println(PRStack);
+
+            // allocate defs - op3
+            if (currOp.usesOP3()) {
+                if (VRToPR[currOp.op3[VR]] == -1) {
+                    System.out.println("op3 gets a pr with inputs - vr: " + currOp.op3[VR] + " nu: " + currOp.op3[NU]);
+                    currOp.op3[PR] = getAPR(currOp.op3[VR], currOp.op3[NU], false);
+                    if (currOp.op3[NU] == Integer.MAX_VALUE) {
+                        freeAPR(currOp.op3[PR]);
+                        PRStack.push(currOp.op3[PR]);
+                    }
+                } else {
+                    currOp.op3[PR] = VRToPR[currOp.op3[VR]];
+                }
+            }
+            // clear the mark in each PR
+            System.out.println("currOp: " + currOp + "\nVRToPR: " + Arrays.toString(VRToPR) +  "\t\tPRToVR: " + Arrays.toString(PRToVR) + "\t\tPRNU: " + Arrays.toString(PRNU) + "\nallocating next op...");
+            allocatedOps[i] = currOp;
+            formatOperation(currOp, i, PR);
+        }
+        Arrays.stream(formattedOps).forEach(System.out::println);
+    }
+
+    public int getAPR(int vr, int nu, boolean OP2) {
+        int x;
+        if (!PRStack.isEmpty()) {
+            x = PRStack.pop();
+        } else {
+            if (OP2) {
+                int[] PRNUModified = PRNU;
+//                PRNUModified[]
+                x = getIdxMaxVal(PRNUModified);
+            } else {
+                x = getIdxMaxVal(PRNU);
+            }
+           // pick unmarked x and spill it
+            spill(x);
+            VRToPR[PRToVR[x]] = -1;
+        }
+        System.out.println("getAPR picked pr" + x);
+        VRToPR[vr] = x;
+        PRToVR[x] = vr;
+        PRNU[x] = nu;
+
+        return x;
+    }
+
+    // TODO: this shit
+    public void restore(int vr, int pr) {
+
+    }
+
+    public void freeAPR(int pr) {
+        VRToPR[PRToVR[pr]] = -1;
+        PRToVR[pr] = -1;
+        PRNU[pr] = Integer.MAX_VALUE;
+    }
+
+    int spillAddr = 32768;
+    // TODO: properly spill
+    public void spill(int pr) {
+
+    }
+
+    public int getIdxMaxVal(int[] arr) {
+        int maxVal = -Integer.MAX_VALUE;
+        int maxIdx = -1;
+        for (int i = 0; i < arr.length; i++) {
+            int num = arr[i];
+            if (num > maxVal) {
+                maxVal = num;
+                maxIdx = i;
             }
         }
-    }
-
-    public int getAPR() {
-        return 0;
-    }
-
-    public void freePR() {
-
+        return maxIdx;
     }
 }

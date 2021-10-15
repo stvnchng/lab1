@@ -107,8 +107,7 @@ public class Main {
             }
             LinkedList<IR.Node> ops = parser.getIR();
             if (flagK) {
-                System.out.println("Invoking allocator with k = " + k);
-                return;
+                allocator.allocate(renamedOps, k);
             }
             allocator.renameRegisters(ops);
         }
