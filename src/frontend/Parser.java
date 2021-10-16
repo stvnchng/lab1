@@ -1,6 +1,5 @@
 package frontend;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -63,7 +62,7 @@ public class Parser {
                     current = nextToken();
                     while (current.getPOS().equals(POS.SPACE)) current = nextToken();
                     if (!current.getPOS().equals(POS.REG)) {
-                        parseError(current.lineNum, "Missing destination register in memop.");
+                        parseError(current.lineNum, "Missing target register in load or store.");
                     } else {
                         int sr3 = Integer.parseInt(current.getLexeme().substring(1));
                         int[] op1 = new int[]{ sr1 }, op2 = new int[]{     }, op3 = new int[]{ sr3 };
@@ -126,12 +125,12 @@ public class Parser {
                 current = nextToken();
                 while (current.getPOS().equals(POS.SPACE)) current = nextToken();
                 if (!current.getPOS().equals(POS.COMMA)) {
-                    parseError(current.lineNum, "Missing a comma after the register in " + current.getLexeme() + ".");
+                    parseError(current.lineNum, "Missing a comma after the register in arithop.");
                 } else {
                     current = nextToken();
                     while (current.getPOS().equals(POS.SPACE)) current = nextToken();
                     if (!current.getPOS().equals(POS.REG)) {
-                        parseError(current.lineNum, "Missing second register in " + current.getLexeme() + ".");
+                        parseError(current.lineNum, "Missing second source register in arithop.");
                     } else {
                         int sr2 = Integer.parseInt(current.getLexeme().substring(1));
                         current = nextToken();
@@ -142,7 +141,7 @@ public class Parser {
                             current = nextToken();
                             while (current.getPOS().equals(POS.SPACE)) current = nextToken();
                             if (!current.getPOS().equals(POS.REG)) {
-                                parseError(current.lineNum, "Missing destination register in arithop.");
+                                parseError(current.lineNum, "Missing target register in arithop.");
                             } else {
                                 int sr3 = Integer.parseInt(current.getLexeme().substring(1));
                                 int[] op1 = new int[]{ sr1 }, op2 = new int[]{ sr2 }, op3 = new int[]{ sr3 };
@@ -151,6 +150,13 @@ public class Parser {
                                 int[] ops1 = new int[]{ sr1, -1, -1, Integer.MAX_VALUE }, ops2 = new int[]{ sr2, -1, -1, Integer.MAX_VALUE }, ops3 = new int[]{ sr3, -1, -1, Integer.MAX_VALUE };
                                 operation = new IR.Node(opcode, ops1, ops2, ops3);
                                 ops.add(operation);
+
+                                // handle weird cases like extra registers
+                                current = nextToken();
+                                while (current.getPOS().equals(POS.SPACE)) current = nextToken();
+                                if (current.getPOS().equals(POS.REG)) {
+                                    parseError(current.lineNum, " Extra token at end of line \"" + current.getLexeme() + "\" (REG)");
+                                }
                             }
                         }
                     }

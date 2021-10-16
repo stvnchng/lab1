@@ -377,7 +377,7 @@ public class Scanner {
     }
 
     public char nextChar() {
-        return ++idx < currWord.length ? currWord[idx] : '!';
+        return ++idx < currWord.length ? currWord[idx] : '.';
     }
 
     public Iterator<Token> tokensToIterator() {
@@ -404,6 +404,6 @@ public class Scanner {
     public void reportErrors() {
         System.out.println("Line\tMessage\n-----------------------------");
         errors.forEach(System.err::println);
-        System.err.println("\neFrontend found " + errors.size() + " errors.");
+        System.err.println("\nFront End found " + errors.size() + " error(s).");
     }
 }
